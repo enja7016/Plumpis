@@ -1,4 +1,5 @@
 import random
+from bot import Bot
 
 # Class defining a card with suit and rank
 class Card:
@@ -8,6 +9,10 @@ class Card:
 
     def __str__(self):
         return f"{self.rank} {self.suit}"
+    
+    def __lt__(self, other):
+        ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+        return ranks.index(self.rank) > ranks.index(other.rank)
 
 # Class defining a deck of cards, one card of each type (52 cards)
 class Deck:
@@ -89,6 +94,8 @@ class PlumpGame:
         self.deal_cards()
         # Guess number of stick for each player
         self.guess_stick()
+        for player in self.players[1:]:
+            print(f"Player {player.name} calls {player.guessed_stick} sticks.")
         self.play_stick()
 
     # Play a stick
@@ -99,9 +106,14 @@ class PlumpGame:
                 # Get current player from index:
             current_player = self.players[self.current_player_index]
             print(f"{current_player.name}'s turn")
-            print("Your hand:", [str(card) for card in current_player.hand])
-            # Choose card:
-            card_index = int(input("Enter the index of the card you want to play: "))
+            if current_player.name == "Player 1":
+                print("Your hand:", [str(card) for card in current_player.hand])
+                # Choose card:
+                card_index = int(input("Enter the index of the card you want to play: "))
+            else:
+                bot = Bot(current_player.hand)
+                bot.update_cards(current_player.hand, self.played_cards)
+                card_index = bot.play_card()
             # Play chosen card:
             played_card = current_player.play_card(card_index)
             # Add played card and player index to stick:
@@ -118,10 +130,20 @@ class PlumpGame:
 
     # Guess number of stick for each player
     def guess_stick(self):
-        for player in self.players:
-            print(f"{player.name}, your hand is:", [str(card) for card in player.hand])
-            guessed_stick = int(input("How many stick do you think you will win? "))
-            player.guess_stick(guessed_stick)
+        #In case we want to go back to multiple players
+        # for player in self.players:
+        #     print(f"{player.name}, your hand is:", [str(card) for card in player.hand])
+        #     guessed_stick = int(input("How many stick do you think you will win? "))
+        #     player.guess_stick(guessed_stick)
+
+        print(f"{self.players[0].name}, your hand is:", [str(card) for card in self.players[0].hand])
+        guessed_stick = int(input("How many stick do you think you will win? "))
+        self.players[0].guess_stick(guessed_stick)
+
+        for player in self.players[1:]:
+            bot = Bot(player.hand)
+            bot.set_guess()
+            player.guess_stick(bot.guessed_sticks)
 
     # Resolve stick
     def resolve_stick(self):
