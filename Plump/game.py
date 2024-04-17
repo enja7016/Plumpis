@@ -3,6 +3,7 @@ import numpy as np
 
 from Plump import Player
 from card import Card
+from Plump import Round
 
 class PlumpGame:
 
@@ -13,6 +14,7 @@ class PlumpGame:
         self.num_cards = num_cards
         self.num_players = num_players
         self.bets = []
+        self.scores = 0
 
     def configure(self, game_config):
         ''' Specifiy some game specific parameters, such as number of players
@@ -26,7 +28,7 @@ class PlumpGame:
         self.np_random.shuffle(shuffle_deck)
         self.deck = list(shuffle_deck)
         
-    def deal_card(self, player):
+    def deal_card(self, player: Player):
         ''' Distribute one card to the player
 
         Args:

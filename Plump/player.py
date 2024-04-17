@@ -10,6 +10,8 @@ class Player:
         self.player_id = player_id
         self.hand = []
         self.score = 0
+        self.bet = 0
+        self.sticks = 0
 
     def get_player_id(self):
         ''' Return player's id
@@ -20,3 +22,8 @@ class Player:
         ''' Return player's hand
         '''
         return self.hand
+    
+    def add_card(self, card):
+        ''' Adds card to player's hand
+        '''
+        self.hand.append(card)
