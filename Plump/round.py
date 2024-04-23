@@ -11,5 +11,5 @@ class Round:
         self.num_players = num_players
         self.played_cards = []
         self.is_over = False
-        self.winner = None:
+        self.winner = None
         

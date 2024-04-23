@@ -226,6 +226,15 @@ class PlumpGame:
             player_idx += 1
         print(f"Contratulations {winner}, you won the game Plump!")
 
+    def get_state(self, player_idx):
+        state = {}
+        state["cards_on_hand"] = []
+        state["guessed_sticks"] = []
+        state["legal_actions"] = []
+        # state["num_players"]
+        # state["cards_on_board"] = []
+        return state
+
 # Input number of players and cards per player
 players_count = int(input("Enter the number of players: "))
 cards_count = int(input("Enter the number of cards per player: "))

@@ -1,7 +1,7 @@
 class Bot:
     def __init__(self, hand) -> None:
         self.hand = hand
-        self.board = []
+        self.played_cards = []
         self.guessed_sticks = 0
     
     def __str__(self) -> str:
@@ -9,7 +9,7 @@ class Bot:
 
     def update_cards(self, hand, cards_in_play):
         self.hand = hand
-        self.board = cards_in_play
+        self.played_cards = cards_in_play
 
     # Method to assign a numerical value to each rank
     def rank_value(self, rank):
@@ -24,9 +24,9 @@ class Bot:
 
     def play_card(self):
         highest_rank = 0
-        if self.board == []:
+        if self.played_cards == []:
             return self.hand.index(max(self.hand))
-        for card in self.board:
+        for card in self.played_cards:
             rank = self.rank_value(card[0].rank)
             if rank > highest_rank:
                 highest_rank = rank
