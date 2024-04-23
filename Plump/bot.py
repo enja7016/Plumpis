@@ -19,7 +19,7 @@ class Bot:
     def set_guess(self):
         self.guessed_sticks = 0
         for card in self.hand:
-            if self.rank_value(card.rank) > 10:
+            if self.rank_value(card.rank) > 8:
                 self.guessed_sticks += 1
 
     def play_card(self):

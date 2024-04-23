@@ -53,6 +53,7 @@ class Player:
     # Play the chosen card from the hand if it exists
     def play_card(self, card_index):
         if 0 <= card_index < len(self.hand):
+            print(f"{self.name} played {self.hand[card_index]}")
             return self.hand.pop(card_index)
         else:
             return None
