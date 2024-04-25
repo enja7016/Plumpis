@@ -1,5 +1,6 @@
 import random
 from bot import Bot
+from agent import Agent
 
 # Class defining a card with suit and rank
 class Card:
@@ -13,6 +14,8 @@ class Card:
     def __lt__(self, other):
         ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
         return ranks.index(self.rank) > ranks.index(other.rank)
+    def __eq__(self, other):
+        return self.suit == other.suit and self.rank == other.rank
 
 # Class defining a deck of cards, one card of each type (52 cards)
 class Deck:
@@ -66,6 +69,7 @@ class Player:
 class PlumpGame:
     def __init__(self, players_count, cards_count):
         self.deck = Deck()
+        self.agent = Agent()
         self.deck.shuffle()
         self.players_count = players_count
         self.players = [Player(f"Player {i+1}") for i in range(players_count)]
@@ -80,7 +84,7 @@ class PlumpGame:
         self.points = [0 for i in range(players_count)]
         # The number of rounds to play, hardcoded to 1 atm
         self.num_rounds = 1
-        self.curr_round = 0
+        self.curr_round = -1
 
     # Deal number of cards to each player from the deck
     def deal_cards(self):
@@ -94,7 +98,7 @@ class PlumpGame:
     def start_game(self):
         self.deal_cards()
         # Guess number of stick for each player
-        self.guess_stick()
+        self.guess_sticks()
         for player in self.players[1:]:
             print(f"Player {player.name} calls {player.guessed_stick} sticks.")
         self.play_stick()
@@ -108,13 +112,15 @@ class PlumpGame:
             current_player = self.players[self.current_player_index]
             print(f"{current_player.name}'s turn")
             if current_player.name == "Player 1":
-                print("Your hand:", [str(card) for card in current_player.hand])
+                print("Agent's hand:", [str(card) for card in current_player.hand])
                 # Choose card:
-                card_index = int(input("Enter the index of the card you want to play: "))
+                card_index = self.agent.choose_action_cards(self.get_state(), self.cards_per_player, self.deck)
+                print(f"Agent chose action: {card_index}")
+                #card_index = int(input("Enter the index of the card you want to play: "))
             else:
                 bot = Bot(current_player.hand)
                 bot.update_cards(current_player.hand, self.played_cards)
-                card_index = bot.play_card()
+                card_index = bot.choose_action_bot()
             # Play chosen card:
             played_card = current_player.play_card(card_index)
             # Add played card and player index to stick:
@@ -125,26 +131,29 @@ class PlumpGame:
                 curr_player += 1
             else:
                 print("Invalid card index. Try again.")
-
         # Get result from stick:
         self.resolve_stick()
 
     # Guess number of stick for each player
-    def guess_stick(self):
+    def guess_sticks(self):
         #In case we want to go back to multiple players
         # for player in self.players:
         #     print(f"{player.name}, your hand is:", [str(card) for card in player.hand])
         #     guessed_stick = int(input("How many stick do you think you will win? "))
         #     player.guess_stick(guessed_stick)
 
-        print(f"{self.players[0].name}, your hand is:", [str(card) for card in self.players[0].hand])
+        print(f"{self.players[0].name}, agent's hand is:", [str(card) for card in self.players[0].hand])
         guessed_stick = int(input("How many stick do you think you will win? "))
-        self.players[0].guess_stick(guessed_stick)
 
+        action = self.agent.choose_action_guess(self.get_state())
+        self.agent.update_agent_state(self.get_state())
+        print(f"Agent guessed: {action}")
+        
         for player in self.players[1:]:
             bot = Bot(player.hand)
             bot.set_guess()
             player.guess_stick(bot.guessed_sticks)
+        self.curr_round += 1 
 
     # Resolve stick
     def resolve_stick(self):
@@ -191,11 +200,14 @@ class PlumpGame:
             
         player_idx = 0
         # Check if guessed number of wins matches actual number of wins for each player
+        winner_round
+        max_round_points = 0
+        points_to_player = 0
         for player in self.players:
             print(f"{player.name} guessed {player.guessed_stick} stick and won {stick_counts[player.name]} stick.")
             if player.guessed_stick == stick_counts[player.name]:
-                points_to_player = 0
                 if player.guessed_stick == 0:
+                    points_to_player = 0
                     self.points[player_idx] += 5
                     points_to_player = 5
                 else: 
@@ -205,8 +217,13 @@ class PlumpGame:
                 # You can modify this to award any number of points
             else:
                 print(f"{player.name} Plumped.")
+            # get winner of round:
+            if points_to_player > max_round_points:
+                max_round_points = points_to_player
+                winner_round = player
             player_idx += 1
         self.curr_round += 1
+        Agent.eval_round(self.points, max_round_points) #TODO send in list of winners (in case of tie)
         if (self.curr_round == self.num_rounds):
             self.end_game()
         else: 
@@ -226,11 +243,22 @@ class PlumpGame:
             player_idx += 1
         print(f"Contratulations {winner}, you won the game Plump!")
 
-    def get_state(self, player_idx):
+    def get_legal_actions(self):
+        if self.curr_round == -1:
+            # guess sticks state
+            return list(range(self.cards_per_player + 1))
+        else:
+            # play card state
+            return list(range(len(self.players[0].hand)))
+        
+    # Only for the agent, Player 1
+    def get_state(self):
         state = {}
-        state["cards_on_hand"] = []
+        state["cards_on_hand"] = self.players[0].hand
         state["guessed_sticks"] = []
-        state["legal_actions"] = []
+        for player in self.players:
+            state["guessed_sticks"].append(player.guessed_stick)
+        state["legal_actions"] = self.get_legal_actions() #TODO
         # state["num_players"]
         # state["cards_on_board"] = []
         return state

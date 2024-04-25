@@ -22,7 +22,7 @@ class Bot:
             if self.rank_value(card.rank) > 8:
                 self.guessed_sticks += 1
 
-    def play_card(self):
+    def choose_action_bot(self):
         highest_rank = 0
         if self.played_cards == []:
             return self.hand.index(max(self.hand))
