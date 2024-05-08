@@ -23,6 +23,7 @@ class Bot:
                 self.guessed_sticks += 1
 
     def choose_action_bot(self):
+        print([str(card) for card in self.hand])
         highest_rank = 0
         if self.played_cards == []:
             return self.hand.index(max(self.hand))
