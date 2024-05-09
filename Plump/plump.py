@@ -86,21 +86,12 @@ class PlumpGame:
         self.cards_per_player = cards_count
         # points[0] = Player 0's points
         self.points = [0 for i in range(players_count)]
-        # The number of rounds to play, hardcoded to 1 atm
-        self.num_rounds = 100
+        # The number of rounds to play
+        self.num_rounds = 100000
         self.curr_round = 0
         
         self.previous_state = None
         self.previous_action = None
-    
-    # Start a new game:
-    def start_game(self):
-        print(f"Round {self.num_rounds}")
-        self.deal_cards()
-        self.guess_sticks()
-        for player in self.players[1:]:
-            print(f"{player.name} guessed {player.guessed_stick} sticks.")
-        self.play_stick()
 
 
     # Deal number of cards to each player from the deck
@@ -123,6 +114,7 @@ class PlumpGame:
             bot = Bot(player.hand)
             bot.set_guess()
             player.set_guess(bot.guessed_sticks)
+            print(f"{player.name} guessed {player.guessed_stick} sticks.")
 
     # Get first state
     def get_first_state(self):
@@ -155,7 +147,7 @@ class PlumpGame:
         self.agent.update_Q(self.previous_state, self.previous_action, 0, self.get_state())
         print("Agent's hand is:", [str(card) for card in self.players[0].hand])
         # Choose card:
-        card_index = self.agent.choose_action_card(self.get_state(), self.cards_per_player, self.deck.cards)
+        card_index = self.agent.choose_action_card(self.get_state(), self.deck.cards)
         print(f"Agent chose action: {card_index}")
         
         self.previous_action = card_index
@@ -186,8 +178,6 @@ class PlumpGame:
                 curr_player += 1
             else:
                 print("Invalid card index. Try again.")
-        # Get result from stick:
-        self.resolve_stick()
 
     # Resolve stick
     def resolve_stick(self):
@@ -202,14 +192,11 @@ class PlumpGame:
         print("-----------------------------")
         # Reset current stick:
         self.played_cards = []
-        if len(self.winner_of_stick) < self.cards_per_player:
-            self.play_stick()
-        else:
-            self.end_round()
+        
 
     # Method to find the highest ranked card in a list of cards
     def highest_card(self, cards):
-        highest_rank = 0
+        highest_rank = -1
         highest_index = None
         for i, (card, player_index) in enumerate(cards):
             rank_value = self.rank_value(card.rank)
@@ -225,7 +212,9 @@ class PlumpGame:
 
     # Ending the game
     def end_round(self):
+        print("-----------------------------")
         print("Round Over!")
+        print("-----------------------------")
         
         # Count the number of sticks won by each player
         stick_counts = {player.name: 0 for player in self.players}
@@ -246,10 +235,10 @@ class PlumpGame:
                 else: 
                     self.points[player_idx] += player.guessed_stick+10
                     points_to_player = player.guessed_stick+10
-                print(f"{player.name} guessed correctly and wins {points_to_player} points!")
+                print(f"{points_to_player} points!")
                 # You can modify this to award any number of points
             else:
-                print(f"{player.name} Plumped.")
+                print(f"plumped. :(")
             # get winner of round:
             if points_to_player > max_round_points:
                 max_round_points = points_to_player
@@ -259,12 +248,6 @@ class PlumpGame:
         self.agent.update_Q(self.previous_state, self.previous_action, reward, self.get_state())
         self.previous_state = None
         self.previous_action = None
-        
-        if (self.curr_round == self.num_rounds):
-            self.end_game()
-        else: 
-            self.reset()
-            self.start_game()
     
     def reset(self):
         self.deck.reset_deck()
@@ -291,24 +274,45 @@ class PlumpGame:
             player_idx += 1
         print(f"Contratulations {winner}, you won the game Plump!")
 
-    def get_legal_actions(self):
-        if self.curr_round == -1:
-            # guess sticks state
-            return list(range(self.cards_per_player + 1))
-        else:
-            # play card state
-            return list(range(len(self.players[0].hand)))
         
+def main():
+    # Number of players and cards per player
+    players_count = 3
+    cards_count = 2
+    
+    print("Starting game for 3 players with 2 cards each")
+    print("-----------------------------")
+
+    # Run the game
+    game = PlumpGame(players_count, cards_count)
+    while game.curr_round < game.num_rounds: 
+        # Start round
+        print("-----------------------------")
+        print(f"Round {game.curr_round}")
+        print("-----------------------------")
+        # Deal cards
+        game.deal_cards()
+        # Guessing phase
+        game.guess_sticks()
+    
+        while len(game.winner_of_stick) < game.cards_per_player:
+            # Play one stick (= all players play a card)
+            game.play_stick()
+            # Get result from stick (= who won the stick):
+            game.resolve_stick()
+
+        game.end_round()
+        game.reset()
+    
+    game.end_game()
+    agent_stats = game.agent.get_stats()
+    print(f"Agent stats: ")
+    print(f"Learned actions taken: {agent_stats['learned_actions']}")
+    print(f"Random fall-back actions taken: {agent_stats['fallback_actions']}")
+    print(f"Exploration actions taken: {agent_stats['exploration_actions']}")
+
+if __name__ == '__main__':
+    main()
 
 
-# Input number of players and cards per player
-players_count = 3
-# int(input("Enter the number of players: "))
-cards_count = 2
-#int(input("Enter the number of cards per player: "))
-print("Starting game for 3 players with 2 cards each")
-print("-----------------------------")
 
-# Test the game
-game = PlumpGame(players_count, cards_count)
-game.start_game()
