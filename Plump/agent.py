@@ -20,11 +20,19 @@ class Agent:
         return self.stats
     
     def state_to_index(self, state):
-        # Encode your state to an index
-        # You can use a hash function or any method that uniquely represents a state as an integer
-        # For demonstration purposes, let's assume state is a list
-        # You may need to define a proper hash function for your specific state representation
-        return hash(tuple(state)) % self.state_size
+        # Normalize the state dictionary
+        # Convert cards on hand to a tuple of card hashes
+        cards_on_hand = tuple(hash(card) for card in state["cards_on_hand"])
+        
+        # Convert guessed sticks to a tuple (None is hashable, so it's okay)
+        guessed_sticks = tuple(state["guessed_sticks"])
+        
+        # Normalize won_sticks, ensure it's hashable
+        won_sticks = hash(state["won_sticks"])
+
+        # Create a composite hash of all components
+        composite_state = (cards_on_hand, guessed_sticks, won_sticks)
+        return hash(composite_state) % self.state_size
 
     def choose_action_card(self, state, deck_cards):
         state_index = self.state_to_index(state)
@@ -68,11 +76,22 @@ class Agent:
 
 
     def update_Q(self, state, action, reward, next_state):
+        print("Updating Q matrix!")
+        print(f"State things: \n Hand: {[str(card) for card in state['cards_on_hand']]}, \n Guessed sticks: {[g for g in state['guessed_sticks']]}, \n Won sticks: {state['won_sticks']}")
+        print(f"Action taken in this state: {action}")
         state_index = self.state_to_index(state)
+        print(f"State index: {state_index}")
+        print(f"Next state things:  \n Hand: {[str(card) for card in next_state['cards_on_hand']]}, \n Guessed sticks: {[g for g in next_state['guessed_sticks']]}, \n Won sticks: {next_state['won_sticks']}")
         next_state_index = self.state_to_index(next_state)
+        print(f"Reward: {reward}")
+        print(f"Next state index: {next_state_index}")
         best_next_action = np.argmax(self.Q[next_state_index])
+        print(f"Best next action: {best_next_action}")
         td_target = reward + self.gamma * self.Q[next_state_index][best_next_action]
+        print(f"td_target: {td_target}")
         td_error = td_target - self.Q[state_index][action]
+        print(f"td_error: {td_error}")
+        print(f"Q[state_index][action] update +: {self.alpha * td_error}")
         self.Q[state_index][action] += self.alpha * td_error
 
 
