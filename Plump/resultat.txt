@@ -1,0 +1,25 @@
+With learned actions
+Player 0's score was 36169
+Player 1's score was 48369
+Player 2's score was 49096
+
+Player 0's score was 35825
+Player 1's score was 48527
+Player 2's score was 49708
+
+Player 0's score was 36460
+Player 1's score was 48192
+Player 2's score was 49522
+
+Without
+Player 0's score was 34316
+Player 1's score was 48625
+Player 2's score was 49360
+
+Player 0's score was 34778
+Player 1's score was 48638
+Player 2's score was 49937
+
+Player 0's score was 34232
+Player 1's score was 48003
+Player 2's score was 49687

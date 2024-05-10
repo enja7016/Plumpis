@@ -159,16 +159,17 @@ class PlumpGame:
     def play_stick(self):
         if self.first_after_guess:
             # Update from guessing to first round of play
+            print(f"prev_action: {self.previous_action}")
             self.agent.update_Q(self.previous_state, self.previous_action, 0, self.get_state())
             self.first_after_guess = False
             
         # Agent always start
         print("Agent's hand is:", [str(card) for card in self.players[0].hand])
         # Choose card:
-        card_index = self.agent.choose_action_card(self.get_state(), self.deck.cards)
+        card_index, deck_index = self.agent.choose_action_card(self.get_state(), Deck().cards)
         print(f"Agent chose action: {card_index}")
         self.previous_state = copy.deepcopy(self.get_state())
-        self.previous_action = card_index                       # TODO: Detta sätter actions till kort-index på handen (0-1).
+        self.previous_action = deck_index                       # TODO: Detta sätter actions till kort-index på handen (0-1).
                                                                 # Tror vi måste definiera actions som kort-index i hela hela kortleken (0-52).
         
         # Play the card:
