@@ -1,12 +1,14 @@
 # from plump import PlumpGame 
 import numpy as np
+import logging
+import copy
+logging.basicConfig(filename='q_values.log', level=logging.DEBUG, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
 class Agent:
     def __init__(self):
-        
         self.state_size = 7956  # Define properly based on your state encoding
         self.action_size = 55  # One for each card in a standard deck (adjust if needed)
-        self.alpha = 0.1
+        self.alpha = 0.25   # modified: 0.1 before. just for experiment.
         self.gamma = 0.9
         self.epsilon = 0.1
         self.Q = np.zeros((self.state_size, self.action_size))
@@ -16,30 +18,61 @@ class Agent:
         self.stats["learned_actions"] = 0
         self.stats["exploration_actions"] = 0
         self.stats["plumps"] = 0
-
+    
     def get_stats(self):
         return self.stats
+
+    # Logging q values. Creates a file called q_values.log. Gets replaced when program is re-run.
+    def log_q_values(self, state, action, q_value_before, reward, q_value_after, next_state, state_idx):
+        # Determine if the action is a card or a guess
+        if state["won_sticks"] == None:
+            action_description = action
+        else:
+            action_description = self.idx_to_card(action)
+        logging.info(f"\nState index: {state_idx} \nState: {self.state_to_str(state)}\nAction: {action_description}, Reward: {reward}\nQ-Value before update: {q_value_before}, Q-Value after update: {q_value_after}")
     
+    # for logging.
+    def idx_to_card(self, card_idx):
+        rank_order = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+        suit_order = ['Hearts', 'Diamonds', 'Clubs', 'Spades']
+        num_ranks = len(rank_order)
+        suit_index = card_idx // num_ranks
+        rank_index = card_idx % num_ranks
+        suit = suit_order[suit_index]
+        rank = rank_order[rank_index]
+        return f"{rank} {suit}"
+    
+    # for logging.
+    def state_to_str(self, state):
+        cards_on_hand = ', '.join(str(card) for card in state["cards_on_hand"])
+        guessed_sticks = ', '.join(str(g) for g in state["guessed_sticks"])
+        won_sticks = state["won_sticks"] if state["won_sticks"] is not None else 'None'
+        return f"Hand: [{cards_on_hand}], Guessed Sticks: [{guessed_sticks}], Won Sticks: {won_sticks}"
+
+    # for hashing attempts. did not work though.
+    def card_to_index(self, card):
+        rank_order = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+        suit_order = ['Hearts', 'Diamonds', 'Clubs', 'Spades']
+        rank_index = rank_order.index(card.rank)
+        suit_index = suit_order.index(card.suit)
+        return suit_index * len(rank_order) + rank_index  
+    
+    # !!!!!!!!!!!!!!!! TODO BIG PROBLEM::: different states gets same index 
     # state_to_index: given a state, return a unique index for that state
     def state_to_index(self, state):
         # Normalize the state dictionary
         # Convert cards on hand to a tuple of card hashes
-        cards_on_hand = tuple(hash(card) for card in state["cards_on_hand"])
-        
-        # Convert guessed sticks to a tuple (None is hashable, so it's okay)
+        cards_on_hand = tuple(self.card_to_index(card) for card in state["cards_on_hand"])  # before: tuple(hash(card) for card in state["cards_on_hand"])
         guessed_sticks = tuple(state["guessed_sticks"])
-        
-        # Normalize won_sticks, ensure it's hashable
         won_sticks = hash(state["won_sticks"])
-
         # Create a composite hash of all components
         composite_state = (cards_on_hand, guessed_sticks, won_sticks)
         return hash(composite_state) % self.state_size
-
+        
     # choose_action_card: given a state, return an action that represents which card to play
     def choose_action_card(self, state, deck_cards):
         state_index = self.state_to_index(state)
-        
+    
         # Choose a random card (explore):
         if np.random.rand() < self.epsilon:
             self.stats["exploration_actions"] += 1
@@ -83,7 +116,7 @@ class Agent:
     # EX (2 cards):
     
     # Guessing Phase         -->           1st card           -->        2nd card           -->        Reward
-    #                                      update_Q(s0, a0, r=0, s1)     update_Q(s1, a1, r=0, s2)     update_Q(s2, a2, r=11, s3)
+    #                                      update_Q(s0, a0, r=0, s1)     update_Q(s1, a1, r=0, s2)     update_Q(s2, a2, r=1, s3)
     # s0:            a0:                   s1:             a1:           s2:           a2:             s3:
     # hand: [x, y]   1                     hand: [x, y]    1             hand: [x]     0               hand: []
     # won: None                            won: 0                        won: 1                        won: 1
@@ -91,12 +124,17 @@ class Agent:
     
     def update_Q(self, state, action, reward, next_state):
         state_index = self.state_to_index(state)
+        q_val_before = copy.deepcopy(self.Q[state_index][action])  # for logging
+        
         next_state_index = self.state_to_index(next_state)
         best_next_action = np.argmax(self.Q[next_state_index])
         # Q learning equation 
         td_target = reward + self.gamma * self.Q[next_state_index][best_next_action]
         td_error = td_target - self.Q[state_index][action]
         self.Q[state_index][action] += self.alpha * td_error
+        
+        # logging
+        self.log_q_values(state, action, q_val_before, reward, self.Q[state_index][action], next_state, state_index)
 
     # eval_round: given the points for a round, calculate the reward
     # if plumped, no reward
@@ -104,9 +142,14 @@ class Agent:
     def eval_round(self, points):
         reward = 0
         if points > 0:
-            reward += points
+            reward += 1         # modified: the reward was really big before. tried to balance a bit more.
+            if points == 11:
+                reward += 0.1
+            if points == 12:
+                reward += 0.1
         else: 
             self.stats["plumps"] += 1
+            reward -= 0.1       # small punishment. just for experiment. 
         return reward
                 
 

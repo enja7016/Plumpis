@@ -60,6 +60,8 @@ class Deck:
     def reset_deck(self):
         self.build()  
         self.shuffle()  
+    
+    
 
 # Class defining a player with name, hand of cards, and guessed stick
 class Player:
@@ -323,7 +325,7 @@ class PlumpGame:
         
 def main():
     # How many games will be played: 
-    num_games = 10000
+    num_games = 100
     
     # Number of players and cards per player
     players_count = 3
