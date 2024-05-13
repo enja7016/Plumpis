@@ -102,7 +102,7 @@ class PlumpGame:
         # Game setting things
         self.players_count = players_count      # how many players
         self.cards_per_player = cards_count     # how many cards in a stick
-        self.num_rounds = 10                    # number of rounds to play
+        self.num_rounds = 100                    # number of rounds to play
         
         # Counters
         self.curr_round = 0             # keeping track of the rounds
@@ -389,6 +389,8 @@ def main():
    
     print("Averages of each 1000-interval sublist:", averages)
     
+    # print(game.agent.Q)
+    print(game.agent.found_state)
     print(f"Agent stats: ")
     print(f"Learned actions taken: {agent_stats['learned_actions']}")
     print(f"Exploration actions taken: {agent_stats['exploration_actions']}")

@@ -12,6 +12,7 @@ class Agent:
         self.gamma = 0.9
         self.epsilon = 0.1
         self.Q = {}
+        self.found_state = 0
         
         # Stats:
         self.stats = {}
@@ -59,18 +60,20 @@ class Agent:
     
     # !!!!!!!!!!!!!!!! TODO BIG PROBLEM::: different states gets same index 
     # state_to_index: given a state, return a unique index for that state
-    def state_to_str(self, state):
-        ret_string = str(state)
+    def state_to_dict_key(self, state):
+        ret_string = self.state_to_str(state)
         self.chk_new_state(ret_string)
         return ret_string
         
     def chk_new_state(self, state_index):
         if state_index not in self.Q.keys():
             self.Q[state_index] = [0] * self.action_size
+        else:
+            self.found_state += 1
 
     # choose_action_card: given a state, return an action that represents which card to play
     def choose_action_card(self, state, deck_cards):
-        state_index = self.state_to_str(state)
+        state_index = self.state_to_dict_key(state)
     
         # Choose a random card (explore):
         if np.random.rand() < self.epsilon:
@@ -95,7 +98,7 @@ class Agent:
             return best_action
 
     def choose_action_guess(self, state):
-        state_index = self.state_to_str(state)
+        state_index = self.state_to_dict_key(state)
         
         # Guess randomly between 0-2 (explore):
         if np.random.rand() < self.epsilon:
@@ -122,10 +125,10 @@ class Agent:
     # guessed_sticks: [None, None, None]   guessed_sticks: [1, 1, 1]     guessed_sticks: [1, 1, 1]     guessed_sticks: [1, 1, 1]          
     
     def update_Q(self, state, action, reward, next_state):
-        state_index = self.state_to_str(state)
+        state_index = self.state_to_dict_key(state)
         q_val_before = copy.deepcopy(self.Q[state_index][action])  # for logging
         
-        next_state_index = self.state_to_str(next_state)
+        next_state_index = self.state_to_dict_key(next_state)
         best_next_action = np.argmax(self.Q[next_state_index])
         # Q learning equation 
         td_target = reward + self.gamma * self.Q[next_state_index][best_next_action]
