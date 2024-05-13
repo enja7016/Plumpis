@@ -8,11 +8,12 @@ class Agent:
     def __init__(self):
         self.state_size = 7956  # Define properly based on your state encoding
         self.action_size = 55  # One for each card in a standard deck (adjust if needed)
-        self.alpha = 0.25   # modified: 0.1 before. just for experiment.
-        self.gamma = 0.9
+        self.alpha = 0.2   # modified: 0.1 before. just for experiment.
+        self.gamma = 0.95
         self.epsilon = 0.1
-        self.Q = np.zeros((self.state_size, self.action_size))
-        
+        #self.Q = np.zeros((self.state_size, self.action_size))
+        self.Q = {}
+        self.found_state = 0
         # Stats:
         self.stats = {}
         self.stats["learned_actions"] = 0
@@ -29,7 +30,7 @@ class Agent:
             action_description = action
         else:
             action_description = self.idx_to_card(action)
-        logging.info(f"\nState index: {state_idx} \nState: {self.state_to_str(state)}\nAction: {action_description}, Reward: {reward}\nQ-Value before update: {q_value_before}, Q-Value after update: {q_value_after}")
+        logging.info(f"\nState: {self.state_to_str(state)}\nAction: {action_description}, Reward: {reward}\nQ-Value before update: {q_value_before}, Q-Value after update: {q_value_after}")
     
     # for logging.
     def idx_to_card(self, card_idx):
@@ -46,6 +47,7 @@ class Agent:
     def state_to_str(self, state):
         cards_on_hand = ', '.join(str(card) for card in state["cards_on_hand"])
         guessed_sticks = ', '.join(str(g) for g in state["guessed_sticks"])
+        #guessed_sticks = str(state["guessed_sticks"])
         won_sticks = state["won_sticks"] if state["won_sticks"] is not None else 'None'
         return f"Hand: [{cards_on_hand}], Guessed Sticks: [{guessed_sticks}], Won Sticks: {won_sticks}"
 
@@ -68,10 +70,21 @@ class Agent:
         # Create a composite hash of all components
         composite_state = (cards_on_hand, guessed_sticks, won_sticks)
         return hash(composite_state) % self.state_size
+    
+    def state_to_dict_key(self, state):
+        ret_string = self.state_to_str(state)
+        self.chk_new_state(ret_string)
+        return ret_string
+        
+    def chk_new_state(self, state_index):
+        if state_index not in self.Q.keys():
+            self.Q[state_index] = [0] * self.action_size
+        else:
+            self.found_state += 1
         
     # choose_action_card: given a state, return an action that represents which card to play
     def choose_action_card(self, state, deck_cards):
-        state_index = self.state_to_index(state)
+        state_index = self.state_to_dict_key(state)
     
         # Choose a random card (explore):
         if np.random.rand() < self.epsilon:
@@ -96,7 +109,7 @@ class Agent:
             return best_action
 
     def choose_action_guess(self, state):
-        state_index = self.state_to_index(state)
+        state_index = self.state_to_dict_key(state)
         
         # Guess randomly between 0-2 (explore):
         if np.random.rand() < self.epsilon:
@@ -107,6 +120,8 @@ class Agent:
         else:
             valid_actions_range = 3  # This defines the range of valid guesses (0-2)
             valid_q_values = self.Q[state_index][:valid_actions_range]  # Slice the Q-values to only consider valid actions
+            if all(x == valid_q_values[0] for x in valid_q_values):
+                return np.random.randint(3)
             best_action = np.argmax(valid_q_values)  # Find the index of the highest Q-value within the valid range
             print(f"Agent is choosing the best action based on Q-values: {valid_q_values}")
             return best_action
@@ -123,10 +138,10 @@ class Agent:
     # guessed_sticks: [None, None, None]   guessed_sticks: [1, 1, 1]     guessed_sticks: [1, 1, 1]     guessed_sticks: [1, 1, 1]          
     
     def update_Q(self, state, action, reward, next_state):
-        state_index = self.state_to_index(state)
+        state_index = self.state_to_dict_key(state)
         q_val_before = copy.deepcopy(self.Q[state_index][action])  # for logging
         
-        next_state_index = self.state_to_index(next_state)
+        next_state_index = self.state_to_dict_key(next_state)
         best_next_action = np.argmax(self.Q[next_state_index])
         # Q learning equation 
         td_target = reward + self.gamma * self.Q[next_state_index][best_next_action]
@@ -143,7 +158,7 @@ class Agent:
         reward = 0
         if points > 0:
             reward += 1         # modified: the reward was really big before. tried to balance a bit more.
-            if points == 11:
+            if points >= 11:
                 reward += 0.1
             if points == 12:
                 reward += 0.1
