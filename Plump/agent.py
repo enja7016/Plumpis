@@ -11,8 +11,7 @@ class Agent:
         self.alpha = 0.25   # modified: 0.1 before. just for experiment.
         self.gamma = 0.9
         self.epsilon = 0.1
-        self.Q = np.zeros((self.state_size, self.action_size))
-        self.state_indexing = [0] * self.state_size
+        self.Q = {}
         
         # Stats:
         self.stats = {}
@@ -60,19 +59,18 @@ class Agent:
     
     # !!!!!!!!!!!!!!!! TODO BIG PROBLEM::: different states gets same index 
     # state_to_index: given a state, return a unique index for that state
-    def state_to_index(self, state):
-        # Normalize the state dictionary
-        # Convert cards on hand to a tuple of card hashes
-        cards_on_hand = tuple(self.card_to_index(card) for card in state["cards_on_hand"])  # before: tuple(hash(card) for card in state["cards_on_hand"])
-        guessed_sticks = tuple(state["guessed_sticks"])
-        won_sticks = hash(state["won_sticks"])
-        # Create a composite hash of all components
-        composite_state = (cards_on_hand, guessed_sticks, won_sticks)
-        return hash(composite_state) % self.state_size
+    def state_to_str(self, state):
+        ret_string = str(state)
+        self.chk_new_state(ret_string)
+        return ret_string
         
+    def chk_new_state(self, state_index):
+        if state_index not in self.Q.keys():
+            self.Q[state_index] = [0] * self.action_size
+
     # choose_action_card: given a state, return an action that represents which card to play
     def choose_action_card(self, state, deck_cards):
-        state_index = self.state_to_index(state)
+        state_index = self.state_to_str(state)
     
         # Choose a random card (explore):
         if np.random.rand() < self.epsilon:
@@ -97,7 +95,7 @@ class Agent:
             return best_action
 
     def choose_action_guess(self, state):
-        state_index = self.state_to_index(state)
+        state_index = self.state_to_str(state)
         
         # Guess randomly between 0-2 (explore):
         if np.random.rand() < self.epsilon:
@@ -124,10 +122,10 @@ class Agent:
     # guessed_sticks: [None, None, None]   guessed_sticks: [1, 1, 1]     guessed_sticks: [1, 1, 1]     guessed_sticks: [1, 1, 1]          
     
     def update_Q(self, state, action, reward, next_state):
-        state_index = self.state_to_index(state)
+        state_index = self.state_to_str(state)
         q_val_before = copy.deepcopy(self.Q[state_index][action])  # for logging
         
-        next_state_index = self.state_to_index(next_state)
+        next_state_index = self.state_to_str(next_state)
         best_next_action = np.argmax(self.Q[next_state_index])
         # Q learning equation 
         td_target = reward + self.gamma * self.Q[next_state_index][best_next_action]
