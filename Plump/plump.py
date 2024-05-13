@@ -158,11 +158,12 @@ class PlumpGame:
         state["guessed_sticks"] = []
         for player in self.players:
             state["guessed_sticks"].append(player.guessed_stick)
+        #state["guessed_sticks"] = self.players[0].guessed_stick
 
         # Check how many times the agent won a stick
         wins = 0
         for p in self.winner_of_stick:
-            if p == 0:
+            if p.name == "Player 0":
                 wins += 1
         state["won_sticks"] = wins
         return state
@@ -325,7 +326,7 @@ class PlumpGame:
         
 def main():
     # How many games will be played: 
-    num_games = 100
+    num_games = 10000
     
     # Number of players and cards per player
     players_count = 3
@@ -377,9 +378,9 @@ def main():
     averages = []
 
     # Iterate over the large list in steps of 1000
-    for i in range(0, len(agent_plumps), 1000):
+    for i in range(0, len(agent_plumps), 100):
         # Extract the sublist
-        sublist = agent_plumps[i:i+1000]
+        sublist = agent_plumps[i:i+100]
         
         # Calculate the average of the sublist
         average = sum(sublist) / len(sublist)
@@ -387,7 +388,7 @@ def main():
         # Append the average to the list of averages
         averages.append(average)
    
-    print("Averages of each 1000-interval sublist:", averages)
+    print("Averages of each 100-interval sublist:", averages)
     
     print(f"Agent stats: ")
     print(f"Learned actions taken: {agent_stats['learned_actions']}")
