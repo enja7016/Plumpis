@@ -1,123 +1,156 @@
 # from plump import PlumpGame 
 import numpy as np
+import logging
+import copy
+logging.basicConfig(filename='q_values.log', level=logging.DEBUG, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
 class Agent:
     def __init__(self):
-        
-
         self.state_size = 7956  # Define properly based on your state encoding
         self.action_size = 55  # One for each card in a standard deck (adjust if needed)
-        self.alpha = 0.1
+        self.alpha = 0.25   # modified: 0.1 before. just for experiment.
         self.gamma = 0.9
         self.epsilon = 0.1
         self.Q = np.zeros((self.state_size, self.action_size))
         self.state_indexing = [0] * self.state_size
         
+        # Stats:
         self.stats = {}
         self.stats["learned_actions"] = 0
-        self.stats["fallback_actions"] = 0
         self.stats["exploration_actions"] = 0
-
+        self.stats["plumps"] = 0
+    
     def get_stats(self):
         return self.stats
+
+    # Logging q values. Creates a file called q_values.log. Gets replaced when program is re-run.
+    def log_q_values(self, state, action, q_value_before, reward, q_value_after, next_state, state_idx):
+        # Determine if the action is a card or a guess
+        if state["won_sticks"] == None:
+            action_description = action
+        else:
+            action_description = self.idx_to_card(action)
+        logging.info(f"\nState index: {state_idx} \nState: {self.state_to_str(state)}\nAction: {action_description}, Reward: {reward}\nQ-Value before update: {q_value_before}, Q-Value after update: {q_value_after}")
     
+    # for logging.
+    def idx_to_card(self, card_idx):
+        rank_order = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+        suit_order = ['Hearts', 'Diamonds', 'Clubs', 'Spades']
+        num_ranks = len(rank_order)
+        suit_index = card_idx // num_ranks
+        rank_index = card_idx % num_ranks
+        suit = suit_order[suit_index]
+        rank = rank_order[rank_index]
+        return f"{rank} {suit}"
+    
+    # for logging.
+    def state_to_str(self, state):
+        cards_on_hand = ', '.join(str(card) for card in state["cards_on_hand"])
+        guessed_sticks = ', '.join(str(g) for g in state["guessed_sticks"])
+        won_sticks = state["won_sticks"] if state["won_sticks"] is not None else 'None'
+        return f"Hand: [{cards_on_hand}], Guessed Sticks: [{guessed_sticks}], Won Sticks: {won_sticks}"
+
+    # for hashing attempts. did not work though.
+    def card_to_index(self, card):
+        rank_order = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+        suit_order = ['Hearts', 'Diamonds', 'Clubs', 'Spades']
+        rank_index = rank_order.index(card.rank)
+        suit_index = suit_order.index(card.suit)
+        return suit_index * len(rank_order) + rank_index  
+    
+    # !!!!!!!!!!!!!!!! TODO BIG PROBLEM::: different states gets same index 
+    # state_to_index: given a state, return a unique index for that state
     def state_to_index(self, state):
         # Normalize the state dictionary
         # Convert cards on hand to a tuple of card hashes
-        cards_on_hand = tuple(hash(card) for card in state["cards_on_hand"])
-        
-        # Convert guessed sticks to a tuple (None is hashable, so it's okay)
+        cards_on_hand = tuple(self.card_to_index(card) for card in state["cards_on_hand"])  # before: tuple(hash(card) for card in state["cards_on_hand"])
         guessed_sticks = tuple(state["guessed_sticks"])
-        
-        # Normalize won_sticks, ensure it's hashable
         won_sticks = hash(state["won_sticks"])
-
         # Create a composite hash of all components
         composite_state = (cards_on_hand, guessed_sticks, won_sticks)
         return hash(composite_state) % self.state_size
-
-    def get_deck_index(self, card, deck_cards):
-        for deck_idx, deck_card in enumerate(deck_cards):
-                    if card == deck_card:
-                         return deck_idx
-        return 0 #TODO proper error handling
-
+        
+    # choose_action_card: given a state, return an action that represents which card to play
     def choose_action_card(self, state, deck_cards):
         state_index = self.state_to_index(state)
+    
+        # Choose a random card (explore):
         if np.random.rand() < self.epsilon:
             self.stats["exploration_actions"] += 1
-            # Choose a random valid action
-            a =  np.random.choice([i for i in range(len(state["cards_on_hand"]))])
-            print(f"Agent is choosing a random card to play: {a}")
-            return a, self.get_deck_index(state["cards_on_hand"][a], deck_cards)
+            a = np.random.choice([i for i in range(len(state["cards_on_hand"]))])
+            print(f"Agent is playing a random card")
+            return a
+        
+        # Play the card with highest Q-value:
         else:
             # Get all possible actions based on the current hand
             valid_actions = []
             for idx, card in enumerate(state["cards_on_hand"]):
-                deck_idx = self.get_deck_index(card, deck_cards)
-                valid_actions.append((idx, self.Q[state_index][deck_idx]))
-
+                for deck_idx, deck_card in enumerate(deck_cards):
+                    if card == deck_card:
+                        valid_actions.append((idx, self.Q[state_index][deck_idx]))
             # Choose the best valid action (has the highest Q value)
-            if valid_actions:
-                valid_actions.sort(key=lambda x: x[1], reverse=True)  # Sort by Q value
-                best_action = valid_actions[0][0]  # Take the index of the best action
-                print(f"Agent is choosing a best valid action, index 0 in: {valid_actions}")
-                self.stats["learned_actions"] += 1
-                return best_action, self.get_deck_index(state["cards_on_hand"][best_action], deck_cards)
-
-        # If no valid actions found, default to random choice (fallback)
-        b = np.random.choice([i for i in range(len(state["cards_on_hand"]))])
-        self.stats["fallback_actions"] += 1
-        print(f"Agent did not find a valid action, and falls back on random action: {b}")
-        return b, self.get_deck_index(state["cards_on_hand"][a], deck_cards)
-
+            valid_actions.sort(key=lambda x: x[1], reverse=True)  # Sort by Q value
+            best_action = valid_actions[0][0]  # Take the index of the best action
+            print(f"Agent is choosing a best valid action, index 0 in: {valid_actions}")
+            self.stats["learned_actions"] += 1
+            return best_action
 
     def choose_action_guess(self, state):
-            state_index = self.state_to_index(state)
-            if np.random.rand() < self.epsilon:
-                print(f"Agent is guessing randomly")
-                return np.random.randint(3)
-            else:
-                print(f"Agent is choosing the best action in: {self.Q[state_index]}")
-                if np.argmax(self.Q[state_index] < 3):
-                    return np.argmax(self.Q[state_index]) # gives best index of 0-2
-                else:
-                     return np.random.randint(3)
-
-    def get_state_index(self, state):
-        if state not in self.state_indexing:
-            state_index = self.state_indexing.index(0)
-            self.state_indexing[state_index] = state
-        else:
-             state_index = self.state_indexing.index(state)
-        return state_index
-
-    def update_Q(self, state, action, reward, next_state):
-        print("Updating Q matrix!")
-        print(f"State things: \n Hand: {[str(card) for card in state['cards_on_hand']]}, \n Guessed sticks: {[g for g in state['guessed_sticks']]}, \n Won sticks: {state['won_sticks']}")
-        print(f"Action taken in this state: {action}")
         state_index = self.state_to_index(state)
-        # state_index = self.get_state_index(state)
-        print(f"State index: {state_index}")
-        print(f"Next state things:  \n Hand: {[str(card) for card in next_state['cards_on_hand']]}, \n Guessed sticks: {[g for g in next_state['guessed_sticks']]}, \n Won sticks: {next_state['won_sticks']}")
+        
+        # Guess randomly between 0-2 (explore):
+        if np.random.rand() < self.epsilon:
+            print(f"Agent is guessing randomly")
+            return np.random.randint(3)
+        
+        # Choose the action with the highest Q-value:
+        else:
+            valid_actions_range = 3  # This defines the range of valid guesses (0-2)
+            valid_q_values = self.Q[state_index][:valid_actions_range]  # Slice the Q-values to only consider valid actions
+            best_action = np.argmax(valid_q_values)  # Find the index of the highest Q-value within the valid range
+            print(f"Agent is choosing the best action based on Q-values: {valid_q_values}")
+            return best_action
+
+    # update_Q: given a state, the action taken in that state and the reward for ending up in next_state, update the Q matri
+    # this should be called 'cards_on_hand' + 1 times in plump.py
+    # EX (2 cards):
+    
+    # Guessing Phase         -->           1st card           -->        2nd card           -->        Reward
+    #                                      update_Q(s0, a0, r=0, s1)     update_Q(s1, a1, r=0, s2)     update_Q(s2, a2, r=1, s3)
+    # s0:            a0:                   s1:             a1:           s2:           a2:             s3:
+    # hand: [x, y]   1                     hand: [x, y]    1             hand: [x]     0               hand: []
+    # won: None                            won: 0                        won: 1                        won: 1
+    # guessed_sticks: [None, None, None]   guessed_sticks: [1, 1, 1]     guessed_sticks: [1, 1, 1]     guessed_sticks: [1, 1, 1]          
+    
+    def update_Q(self, state, action, reward, next_state):
+        state_index = self.state_to_index(state)
+        q_val_before = copy.deepcopy(self.Q[state_index][action])  # for logging
+        
         next_state_index = self.state_to_index(next_state)
-        # next_state_index = self.get_state_index(next_state)
-        print(f"Reward: {reward}")
-        print(f"Next state index: {next_state_index}")
         best_next_action = np.argmax(self.Q[next_state_index])
-        print(f"Best next action: {best_next_action}")
+        # Q learning equation 
         td_target = reward + self.gamma * self.Q[next_state_index][best_next_action]
-        print(f"td_target: {td_target}")
         td_error = td_target - self.Q[state_index][action]
-        print(f"td_error: {td_error}")
-        print(f"Q[state_index][action] update +: {self.alpha * td_error}")
-
         self.Q[state_index][action] += self.alpha * td_error
+        
+        # logging
+        self.log_q_values(state, action, q_val_before, reward, self.Q[state_index][action], next_state, state_index)
 
+    # eval_round: given the points for a round, calculate the reward
+    # if plumped, no reward
+    # otherwise, reward is proportionate to the amount of points
     def eval_round(self, points):
         reward = 0
         if points > 0:
-            reward += points
+            reward += 1         # modified: the reward was really big before. tried to balance a bit more.
+            if points == 11:
+                reward += 0.1
+            if points == 12:
+                reward += 0.1
+        else: 
+            self.stats["plumps"] += 1
+            reward -= 0.1       # small punishment. just for experiment. 
         return reward
                 
 
