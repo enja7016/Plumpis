@@ -2,7 +2,15 @@
 import numpy as np
 import logging
 import copy
-logging.basicConfig(filename='q_values.log', level=logging.DEBUG, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Create q-value logs
+# use q_logger.info("") to log something
+q_logger = logging.getLogger('q_logger')
+q_logger.setLevel(logging.DEBUG)
+q_handler = logging.FileHandler('q_values.log', mode='w')
+q_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+q_handler.setFormatter(q_formatter)
+q_logger.addHandler(q_handler)
 
 class Agent:
     def __init__(self):
@@ -30,7 +38,7 @@ class Agent:
             action_description = action
         else:
             action_description = self.idx_to_card(action)
-        logging.info(f"\nState: {self.state_to_str(state)}\nAction: {action_description}, Reward: {reward}\nQ-Value before update: {q_value_before}, Q-Value after update: {q_value_after}")
+        q_logger.info(f"\nState: {self.state_to_str(state)}\nAction: {action_description}, Reward: {reward}\nQ-Value before update: {q_value_before}, Q-Value after update: {q_value_after}")
     
     # for logging.
     def idx_to_card(self, card_idx):
@@ -90,7 +98,7 @@ class Agent:
         if np.random.rand() < self.epsilon:
             self.stats["exploration_actions"] += 1
             a = np.random.choice([i for i in range(len(state["cards_on_hand"]))])
-            print(f"Agent is playing a random card")
+            #print(f"Agent is playing a random card")
             return a
         
         # Play the card with highest Q-value:
@@ -104,7 +112,7 @@ class Agent:
             # Choose the best valid action (has the highest Q value)
             valid_actions.sort(key=lambda x: x[1], reverse=True)  # Sort by Q value
             best_action = valid_actions[0][0]  # Take the index of the best action
-            print(f"Agent is choosing a best valid action, index 0 in: {valid_actions}")
+            #print(f"Agent is choosing a best valid action, index 0 in: {valid_actions}")
             self.stats["learned_actions"] += 1
             return best_action
 
@@ -113,7 +121,7 @@ class Agent:
         
         # Guess randomly between 0-2 (explore):
         if np.random.rand() < self.epsilon:
-            print(f"Agent is guessing randomly")
+            #print(f"Agent is guessing randomly")
             return np.random.randint(3)
         
         # Choose the action with the highest Q-value:
@@ -123,7 +131,7 @@ class Agent:
             if all(x == valid_q_values[0] for x in valid_q_values):
                 return np.random.randint(3)
             best_action = np.argmax(valid_q_values)  # Find the index of the highest Q-value within the valid range
-            print(f"Agent is choosing the best action based on Q-values: {valid_q_values}")
+            #print(f"Agent is choosing the best action based on Q-values: {valid_q_values}")
             return best_action
 
     # update_Q: given a state, the action taken in that state and the reward for ending up in next_state, update the Q matri
