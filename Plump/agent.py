@@ -66,7 +66,23 @@ class Agent:
         rank_index = rank_order.index(card.rank)
         suit_index = suit_order.index(card.suit)
         return suit_index * len(rank_order) + rank_index  
+<<<<<<< HEAD
 
+=======
+    
+    # !!!!!!!!!!!!!!!! TODO BIG PROBLEM::: different states gets same index 
+    # state_to_index: given a state, return a unique index for that state
+    def state_to_index(self, state):
+        # Normalize the state dictionary
+        # Convert cards on hand to a tuple of card hashes
+        cards_on_hand = tuple(self.card_to_index(card) for card in state["cards_on_hand"])  # before: tuple(hash(card) for card in state["cards_on_hand"])
+        guessed_sticks = tuple(state["guessed_sticks"])
+        won_sticks = hash(state["won_sticks"])
+        # Create a composite hash of all components
+        composite_state = (cards_on_hand, guessed_sticks, won_sticks)
+        return hash(composite_state) % self.state_size
+    
+>>>>>>> ed95cca3ed223ab26aa1ea7e511fd40d37a43070
     def state_to_dict_key(self, state):
         ret_string = self.state_to_str(state)
         self.chk_new_state(ret_string)
@@ -87,6 +103,10 @@ class Agent:
             self.stats["exploration_actions"] += 1
             a = np.random.choice([i for i in range(len(state["cards_on_hand"]))])
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+            #print(f"Agent is playing a random card")
+>>>>>>> ed95cca3ed223ab26aa1ea7e511fd40d37a43070
 =======
             #print(f"Agent is playing a random card")
 >>>>>>> ed95cca3ed223ab26aa1ea7e511fd40d37a43070
@@ -104,6 +124,10 @@ class Agent:
             valid_actions.sort(key=lambda x: x[1], reverse=True)  # Sort by Q value
             best_action = valid_actions[0][0]  # Take the index of the best action
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+            #print(f"Agent is choosing a best valid action, index 0 in: {valid_actions}")
+>>>>>>> ed95cca3ed223ab26aa1ea7e511fd40d37a43070
 =======
             #print(f"Agent is choosing a best valid action, index 0 in: {valid_actions}")
 >>>>>>> ed95cca3ed223ab26aa1ea7e511fd40d37a43070
