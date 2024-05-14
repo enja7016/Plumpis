@@ -234,6 +234,7 @@ class PlumpGame:
             # Play chosen card:
             played_card = current_player.play_card(card_index)
             print(f"Bot played: {played_card}")
+            self.played_cards.append((played_card, self.current_player_index))
             self.current_player_index = 0
         else: 
             # Go to next player:
@@ -261,7 +262,6 @@ class PlumpGame:
 
     # Resolve stick
     def resolve_stick(self):
-        
         # Find winning card and its player index:
         winning_card, winning_player_index = self.highest_card(self.played_cards)
         # Get winning player:
@@ -375,7 +375,7 @@ class PlumpGame:
                 if player.name == "Player 1":
                     name = "You"
                 if player.name == "Player 2":
-                    name == "Bot"
+                    name = "Bot"
                 print(f"{name} score was {self.points[player_idx]}")
             else: game_logger.info(f"\n{player.name}'s score was {self.points[player_idx]}")
             if self.points[player_idx] > max_player_points:
@@ -383,13 +383,13 @@ class PlumpGame:
                 winner = player.name
             player_idx += 1
         if self.human_player:
-            if winner == " Player 0":
-                    name = "Agent"
-            if winner == " Player 1":
+            if winner == "Player 0":
+                    name = " Agent"
+            if winner == "Player 1":
                     name = ""
             if winner == "Player 2":
-                    name == " Bot"
-            print(f"Congratulations{winner}, you won the game Plump!")
+                    name = " Bot"
+            print(f"Congratulations{name}, you won the game Plump!")
         else: game_logger.info(f"\nContratulations {winner}, you won the game Plump!")
     
     # clear after all rounds (num_rounds) has been played, only agent remains
@@ -476,7 +476,11 @@ def play(game):
         
     game.end_game()
     game.clear()
-
+    
+def clear_log_file(filename):
+        with open(filename, 'w') as file:
+            pass
+        
 def main():
     print("Hello! Welcome to Plumpis, a reinforcement learning model for the card game Plump.")
     players_count = 3
@@ -486,22 +490,26 @@ def main():
     game = PlumpGame(players_count, num_cards, num_rounds)
     cmd = 0
     while cmd != 3:
-        cmd = int(input("What would you like to do? \n  1: Train \n  2: Play \n  3: Quit\n"))
+        cmd = int(input("What would you like to do? \n  1: Train \n  2: Play \n  3: Clear log files \n  4: Quit\n"))
         if cmd == 1: 
             game.human_player = 0
             print("Preparing to train the agent...")
             num_games = int(input("  How many games should the agent train on? "))
             print("Training...")
             train(game, num_games)
+            cmd = 0
         if cmd == 2:
             game.human_player = 1
             print("Play one game vs the agent and one bot!")
             play(game)
-            
+            cmd = 0
         if cmd == 3:
+            print("Clearning log files...")
+            clear_log_file("q_values.log")
+            clear_log_file("games.log")
+            cmd = 0
+        if cmd == 4:
             quit()
-        else:
-            print("Invalid command! Try again.")
     
 
 if __name__ == '__main__':
