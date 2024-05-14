@@ -86,6 +86,10 @@ class Agent:
         if np.random.rand() < self.epsilon:
             self.stats["exploration_actions"] += 1
             a = np.random.choice([i for i in range(len(state["cards_on_hand"]))])
+<<<<<<< HEAD
+=======
+            #print(f"Agent is playing a random card")
+>>>>>>> ed95cca3ed223ab26aa1ea7e511fd40d37a43070
             return a
         
         # Play the card with highest Q-value:
@@ -99,6 +103,10 @@ class Agent:
             # Choose the best valid action (has the highest Q value)
             valid_actions.sort(key=lambda x: x[1], reverse=True)  # Sort by Q value
             best_action = valid_actions[0][0]  # Take the index of the best action
+<<<<<<< HEAD
+=======
+            #print(f"Agent is choosing a best valid action, index 0 in: {valid_actions}")
+>>>>>>> ed95cca3ed223ab26aa1ea7e511fd40d37a43070
             self.stats["learned_actions"] += 1
             return best_action
 

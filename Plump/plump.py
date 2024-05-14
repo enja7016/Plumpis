@@ -262,6 +262,7 @@ class PlumpGame:
 
     # Resolve stick
     def resolve_stick(self):
+        
         # Find winning card and its player index:
         winning_card, winning_player_index = self.highest_card(self.played_cards)
         # Get winning player:
