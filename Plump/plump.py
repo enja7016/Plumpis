@@ -3,6 +3,7 @@ from bot import Bot
 from agent import Agent
 import copy
 import logging
+from matplotlib import pyplot as plt 
 
 # Create game logs
 # use game_logger.info("") to log something
@@ -363,6 +364,8 @@ class PlumpGame:
                 name = ""
                 if player.name == "Player 0":
                     name = "Agent"
+                    self.agent.stats["wins"] += 1
+                    print(self.agent.stats["wins"])
                 if player.name == "Player 1":
                     name = "You"
                 if player.name == "Player 2":
@@ -424,16 +427,27 @@ class PlumpGame:
                     name = " Bot"
             print(f"Congratulations{name}, you won the game Plump!")
         else: game_logger.info(f"\nContratulations {winner}, you won the game Plump!")
-    
+        if winner == "Player 0":
+            self.agent.stats["wins"] += 1
     # clear after all rounds (num_rounds) has been played, only agent remains
     def clear(self):
         self.reset()
         self.curr_round = 0
         self.points = [0 for i in range(self.players_count)]
-        
+    
+def train_diff_params(game):
+    game.agent.reset()
+    params = [[0.1, 0.9, 0.1], [0.1, 0.6, 0.1], [0.3, 0.9, 0.1], [0.1, 0.9, 0.3], [0.2, 0.75, 0.2]]
+    for parameters in params:
+        game.agent.alter_super_p(parameters[0], parameters[1], parameters[2])
+        train(game, 20000)
+        game.agent.reset()
+
+
 def train(game, num_games):
     # Number of players and cards per player   
     agent_plumps = []
+    agent_wins = []
     game_logger.info(f"\nTraining for 3 players with {game.cards_per_player} cards each, for {num_games} games with {game.num_rounds} rounds.")
     
     curr_game = 0
@@ -463,25 +477,46 @@ def train(game, num_games):
         curr_game += 1
         stats = game.agent.get_stats()
         agent_plumps.append(stats["plumps"])
+        agent_wins.append(stats["wins"])
         game.agent.stats["plumps"] = 0
+        game.agent.stats["wins"] = 0
         
     agent_stats = game.agent.get_stats()
     # Empty list to store the averages
-    averages = []
+    plump_averages = []
+    interval_wins = []
 
     # Iterate over the large list in steps of 1000
     for i in range(0, len(agent_plumps), 100):
         # Extract the sublist
-        sublist = agent_plumps[i:i+100]
+        plump_sublist = agent_plumps[i:i+100]
+        win_sublist = agent_wins[i:i+100]
         
         # Calculate the average of the sublist
-        average = sum(sublist) / len(sublist)
+        plump_average = sum(plump_sublist) / len(plump_sublist)
+        wins = sum(win_sublist)
 
         # Append the average to the list of averages
-        averages.append(average)
+        plump_averages.append(plump_average)
+        interval_wins.append(wins)
+
    
-    print("Averages of each 100-interval sublist:", averages)
+    print("Averages of each 100-interval sublist:", plump_averages)
     
+    plt.title(f"Average amount of Plumps for training period intervals\n Alpha = {game.agent.alpha}, Gamma = {game.agent.gamma}, Epsilon = {game.agent.epsilon}") 
+    plt.xlabel("Intervals (100 games each step)") 
+    plt.ylabel("Average Plumps")
+    plt.plot(plump_averages)
+    plt.gca().set_ylim([3, 8])
+    plt.show()
+
+    plt.title(f"Amount of wins for training period intervals\n Alpha = {game.agent.alpha}, Gamma = {game.agent.gamma}, Epsilon = {game.agent.epsilon}") 
+    plt.xlabel("Intervals (100 games each step)") 
+    plt.ylabel("Wins")
+    plt.plot(interval_wins)
+    plt.gca().set_ylim([0, 100])
+    plt.show()
+
     print(f"Agent stats: ")
     print(f"Learned actions taken: {agent_stats['learned_actions']}")
     print(f"Exploration actions taken: {agent_stats['exploration_actions']}")
@@ -523,7 +558,7 @@ def main():
     game = PlumpGame(players_count, num_cards, num_rounds)
     cmd = 0
     while cmd != 3:
-        cmd = int(input("What would you like to do? \n  1: Train \n  2: Play \n  3: Clear log files \n  4: Quit\n"))
+        cmd = int(input("What would you like to do? \n  1: Train \n  2: Graphs \n  3: Play \n  4: Clear log files \n  5: Quit\n"))
         if cmd == 1: 
             game.human_player = 0
             print("Preparing to train the agent...")
@@ -532,16 +567,22 @@ def main():
             train(game, num_games)
             cmd = 0
         if cmd == 2:
+            safety = input("This will reset the agent. Continue? Y/N\n")
+            if safety.lower() == "y":
+                print("Testing a variety of parameters and reporting plumps...")
+                train_diff_params(game)
+            cmd = 0
+        if cmd == 3:
             game.human_player = 1
             print("Play one game vs the agent and one bot!")
             play(game)
             cmd = 0
-        if cmd == 3:
-            print("Clearning log files...")
+        if cmd == 4:
+            print("Clearing log files...")
             clear_log_file("q_values.log")
             clear_log_file("games.log")
             cmd = 0
-        if cmd == 4:
+        if cmd == 5:
             quit()
     
 

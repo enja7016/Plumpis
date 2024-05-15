@@ -27,7 +27,13 @@ class Agent:
         self.stats["learned_actions"] = 0
         self.stats["exploration_actions"] = 0
         self.stats["plumps"] = 0
+        self.stats["wins"] = 0
     
+    def alter_super_p(self, alpha, gamma, epsilon):
+        self.alpha = alpha
+        self.gamma = gamma
+        self.epsilon = epsilon
+
     def get_stats(self):
         return self.stats
 
@@ -160,3 +166,16 @@ class Agent:
             self.stats["plumps"] += 1
             reward -= 0.1       # small punishment. just for experiment. 
         return reward
+
+    def reset(self):
+        self.alpha = 0.2   # modified: 0.1 before. just for experiment.
+        self.gamma = 0.95
+        self.epsilon = 0.1
+        self.Q = {}
+        self.found_state = 0
+        # Stats:
+        self.stats = {}
+        self.stats["learned_actions"] = 0
+        self.stats["exploration_actions"] = 0
+        self.stats["plumps"] = 0
+        self.stats["wins"] = 0
