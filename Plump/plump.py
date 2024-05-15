@@ -31,6 +31,23 @@ class Card:
     def __hash__(self):
         return hash((self.rank, self.suit))
     
+    def get_card_lines(self):
+        suit_symbols = {'Hearts': '♥', 'Diamonds': '♦', 'Clubs': '♣', 'Spades': '♠'}
+        card_display = [
+            "┌─────┐",
+            f"│{self.rank:<2}   │",
+            f"│  {suit_symbols[self.suit]}  │",
+            f"│   {self.rank:>2}│",
+            "└─────┘"
+        ]
+        return card_display
+    
+    # Function to print cards in a hand
+    def print_card(self):
+        card_display = self.get_card_lines()
+        for row in card_display:
+            print(row)
+    
     
 # Class defining a deck of cards, one card of each type (52 cards)
 class Deck:
@@ -72,7 +89,6 @@ class Deck:
         self.shuffle()  
     
     
-
 # Class defining a player with name, hand of cards, and guessed stick
 class Player:
     def __init__(self, name):
@@ -94,6 +110,14 @@ class Player:
     # Set a player's guess 
     def set_guess(self, guessed_stick):
         self.guessed_stick = guessed_stick
+
+    # Function to print cards in a hand
+    def print_hand(self):
+        cards_display = []
+        for card in self.hand:
+            cards_display.append(card.get_card_lines())
+        for row in zip(*cards_display):
+            print('  '.join(row))
 
 # Class defining the game of plump with deck, players, and stick
 class PlumpGame:
@@ -142,10 +166,13 @@ class PlumpGame:
         self.previous_state = copy.deepcopy(s0)                
         self.previous_action = self.agent.choose_action_guess(s0)
         if self.human_player:
+            print("────────────────")
             print("GUESSING PHASE")
+            print("────────────────")
             print(f"Agent guessed: {self.previous_action}")
             self.players[0].set_guess(self.previous_action)     # set agent's guess
-            print(f"Your cards are: {[str(card) for card in self.players[1].hand]}")
+            print(f"Your cards are: ")
+            self.players[1].print_hand()
             human_guess = int(input("How many sticks do you think you will win? "))
             self.players[1].set_guess(human_guess)
             print(f"You guessed: {human_guess}")
@@ -205,8 +232,10 @@ class PlumpGame:
         # play the card:
         played_card = self.players[0].play_card(card_index)
         self.played_cards.append((played_card, 0))
-        if self.human_player: 
+        if self.human_player:
+            print("────────────────") 
             print("PLAY FOR STICKS PHASE")
+            print("────────────────")
         else: game_logger.info(f"\n       Agent's hand is: {agent_hand}\n       Agent played: {played_card}")
         
         # get deck index of the played card
@@ -215,9 +244,11 @@ class PlumpGame:
         # Q-update for s1 -> s2 happens in resolve_stick()
         # Q-update for s2 -> s3 happens in end_round(), since reward should be given 
         if self.human_player:
-            print(f"Agent played: {played_card}")
+            print(f"Agent played: ")
+            played_card.print_card()
             self.current_player_index += 1
-            print(f"Your cards are: {[str(card) for card in self.players[1].hand]}")
+            print(f"Your cards are: ")
+            self.players[1].print_hand()
             human_card = int(input(("Which card do you want to play (index 0-1)? ")))
             while human_card < 0 or human_card >= len(self.players[1].hand):
                 print("Invalid card index. Try again.")
@@ -225,6 +256,7 @@ class PlumpGame:
             played_card = self.players[1].play_card(human_card)
             self.played_cards.append((played_card, self.current_player_index))
             print(f"You played: {played_card}")
+            played_card.print_card()
             self.current_player_index += 1
             # Get current player from index:
             current_player = self.players[self.current_player_index]
@@ -233,7 +265,8 @@ class PlumpGame:
             card_index = bot.choose_action_bot()
             # Play chosen card:
             played_card = current_player.play_card(card_index)
-            print(f"Bot played: {played_card}")
+            print(f"Bot played: ")
+            played_card.print_card()
             self.played_cards.append((played_card, self.current_player_index))
             self.current_player_index = 0
         else: 
