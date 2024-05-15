@@ -2,18 +2,26 @@
 import numpy as np
 import logging
 import copy
-logging.basicConfig(filename='q_values.log', level=logging.DEBUG, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Create q-value logs
+# use q_logger.info("") to log something
+q_logger = logging.getLogger('q_logger')
+q_logger.setLevel(logging.DEBUG)
+q_handler = logging.FileHandler('q_values.log', mode='w')
+q_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+q_handler.setFormatter(q_formatter)
+q_logger.addHandler(q_handler)
 
 class Agent:
     def __init__(self):
         self.state_size = 7956  # Define properly based on your state encoding
         self.action_size = 55  # One for each card in a standard deck (adjust if needed)
-        self.alpha = 0.25   # modified: 0.1 before. just for experiment.
-        self.gamma = 0.9
+        self.alpha = 0.2   # modified: 0.1 before. just for experiment.
+        self.gamma = 0.95
         self.epsilon = 0.1
+        #self.Q = np.zeros((self.state_size, self.action_size))
         self.Q = {}
         self.found_state = 0
-        
         # Stats:
         self.stats = {}
         self.stats["learned_actions"] = 0
@@ -30,7 +38,7 @@ class Agent:
             action_description = action
         else:
             action_description = self.idx_to_card(action)
-        logging.info(f"\nState index: {state_idx} \nState: {self.state_to_str(state)}\nAction: {action_description}, Reward: {reward}\nQ-Value before update: {q_value_before}, Q-Value after update: {q_value_after}")
+        q_logger.info(f"\nState: {self.state_to_str(state)}\nAction: {action_description}, Reward: {reward}\nQ-Value before update: {q_value_before}, Q-Value after update: {q_value_after}")
     
     # for logging.
     def idx_to_card(self, card_idx):
@@ -47,6 +55,7 @@ class Agent:
     def state_to_str(self, state):
         cards_on_hand = ', '.join(str(card) for card in state["cards_on_hand"])
         guessed_sticks = ', '.join(str(g) for g in state["guessed_sticks"])
+        #guessed_sticks = str(state["guessed_sticks"])
         won_sticks = state["won_sticks"] if state["won_sticks"] is not None else 'None'
         return f"Hand: [{cards_on_hand}], Guessed Sticks: [{guessed_sticks}], Won Sticks: {won_sticks}"
 
@@ -57,9 +66,7 @@ class Agent:
         rank_index = rank_order.index(card.rank)
         suit_index = suit_order.index(card.suit)
         return suit_index * len(rank_order) + rank_index  
-    
-    # !!!!!!!!!!!!!!!! TODO BIG PROBLEM::: different states gets same index 
-    # state_to_index: given a state, return a unique index for that state
+
     def state_to_dict_key(self, state):
         ret_string = self.state_to_str(state)
         self.chk_new_state(ret_string)
@@ -70,7 +77,7 @@ class Agent:
             self.Q[state_index] = [0] * self.action_size
         else:
             self.found_state += 1
-
+        
     # choose_action_card: given a state, return an action that represents which card to play
     def choose_action_card(self, state, deck_cards):
         state_index = self.state_to_dict_key(state)
@@ -79,7 +86,6 @@ class Agent:
         if np.random.rand() < self.epsilon:
             self.stats["exploration_actions"] += 1
             a = np.random.choice([i for i in range(len(state["cards_on_hand"]))])
-            print(f"Agent is playing a random card")
             return a
         
         # Play the card with highest Q-value:
@@ -93,7 +99,6 @@ class Agent:
             # Choose the best valid action (has the highest Q value)
             valid_actions.sort(key=lambda x: x[1], reverse=True)  # Sort by Q value
             best_action = valid_actions[0][0]  # Take the index of the best action
-            print(f"Agent is choosing a best valid action, index 0 in: {valid_actions}")
             self.stats["learned_actions"] += 1
             return best_action
 
@@ -102,15 +107,17 @@ class Agent:
         
         # Guess randomly between 0-2 (explore):
         if np.random.rand() < self.epsilon:
-            print(f"Agent is guessing randomly")
+            #print(f"Agent is guessing randomly")
             return np.random.randint(3)
         
         # Choose the action with the highest Q-value:
         else:
             valid_actions_range = 3  # This defines the range of valid guesses (0-2)
             valid_q_values = self.Q[state_index][:valid_actions_range]  # Slice the Q-values to only consider valid actions
+            if all(x == valid_q_values[0] for x in valid_q_values):
+                return np.random.randint(3)
             best_action = np.argmax(valid_q_values)  # Find the index of the highest Q-value within the valid range
-            print(f"Agent is choosing the best action based on Q-values: {valid_q_values}")
+            #print(f"Agent is choosing the best action based on Q-values: {valid_q_values}")
             return best_action
 
     # update_Q: given a state, the action taken in that state and the reward for ending up in next_state, update the Q matri
@@ -145,7 +152,7 @@ class Agent:
         reward = 0
         if points > 0:
             reward += 1         # modified: the reward was really big before. tried to balance a bit more.
-            if points == 11:
+            if points >= 11:
                 reward += 0.1
             if points == 12:
                 reward += 0.1
@@ -153,6 +160,3 @@ class Agent:
             self.stats["plumps"] += 1
             reward -= 0.1       # small punishment. just for experiment. 
         return reward
-                
-
-    
