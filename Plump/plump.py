@@ -3,6 +3,7 @@ from bot import Bot
 from agent import Agent
 import copy
 import logging
+from time import sleep
 
 # Create game logs
 # use game_logger.info("") to log something
@@ -169,18 +170,18 @@ class PlumpGame:
             print("────────────────")
             print("GUESSING PHASE")
             print("────────────────")
-            print(f"Agent guessed: {self.previous_action}")
+            print(f"> Agent guessed: {self.previous_action}")
             self.players[0].set_guess(self.previous_action)     # set agent's guess
             print(f"Your cards are: ")
             self.players[1].print_hand()
             human_guess = int(input("How many sticks do you think you will win? "))
             self.players[1].set_guess(human_guess)
-            print(f"You guessed: {human_guess}")
+            print(f"> You guessed: {human_guess}")
             player = self.players[2]
             bot = Bot(player.hand)
             bot.set_guess()
             player.set_guess(bot.guessed_sticks)
-            print(f"Bot guessed: {player.guessed_stick}")
+            print(f"> Bot guessed: {player.guessed_stick}")
         else: 
             game_logger.info(f"\n       Agent's hand is: {[str(card) for card in self.players[0].hand]}\n       Agent guessed: {self.previous_action}")
             self.players[0].set_guess(self.previous_action)     # set agent's guess
@@ -244,7 +245,7 @@ class PlumpGame:
         # Q-update for s1 -> s2 happens in resolve_stick()
         # Q-update for s2 -> s3 happens in end_round(), since reward should be given 
         if self.human_player:
-            print(f"Agent played: ")
+            print(f"> Agent played: ")
             played_card.print_card()
             self.current_player_index += 1
             print(f"Your cards are: ")
@@ -255,7 +256,7 @@ class PlumpGame:
                 human_card = int(input(("Which card do you want to play (index 0-1)? ")))
             played_card = self.players[1].play_card(human_card)
             self.played_cards.append((played_card, self.current_player_index))
-            print(f"You played: {played_card}")
+            print(f"> You played: {played_card}")
             played_card.print_card()
             self.current_player_index += 1
             # Get current player from index:
@@ -265,7 +266,7 @@ class PlumpGame:
             card_index = bot.choose_action_bot()
             # Play chosen card:
             played_card = current_player.play_card(card_index)
-            print(f"Bot played: ")
+            print(f"> Bot played: ")
             played_card.print_card()
             self.played_cards.append((played_card, self.current_player_index))
             self.current_player_index = 0
@@ -302,7 +303,9 @@ class PlumpGame:
         # Add winner to stick:
         self.winner_of_stick.append(winning_player)
         if self.human_player:
+            print("\n")
             print("Resolving stick...")
+            sleep(0.5)
             winner = ""
             if winning_player.name == "Player 0":
                 winner = "Agent"
@@ -310,7 +313,8 @@ class PlumpGame:
                 winner = "You"
             if winning_player.name == "Player 2": 
                 winner = "Bot"
-            print(f"{winner} wins the stick with {winning_card}")
+            print(f"{winner} wins the stick with: ")
+            winning_card.print_card()
         else: game_logger.info(f"\n       {winning_player.name} wins the stick with {winning_card}")
       
         # Reset current stick:
@@ -336,7 +340,7 @@ class PlumpGame:
     # Ending the round
     def end_round(self):
         if self.human_player:
-            print(f"Round {self.curr_round} over!")
+            print(f"──── Round {self.curr_round} over! ───────\n")
         else: game_logger.info(f"\n   Round {self.curr_round} over!")
         # Count the number of sticks won by each player
         stick_counts = {player.name: 0 for player in self.players}
@@ -396,7 +400,9 @@ class PlumpGame:
     
     def end_game(self):
         if self.human_player:
+            print("────────────────")
             print("GAME OVER!")
+            print("────────────────")
         else: game_logger.info(f"\nGAME OVER!")
         player_idx = 0
         winner = 0
@@ -489,7 +495,7 @@ def train(game, num_games):
 def play(game):
     # Start round
     while game.curr_round < game.num_rounds: 
-        print(f"Round {game.curr_round}")
+        print(f"──── Round {game.curr_round} ────")
         # Deal cards
         game.deal_cards()
         # Guessing phase
